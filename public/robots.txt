@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+
+# Individual shared checklists aren't meant to be indexed — they're
+# personal, user-generated, and there are infinitely many of them.
+Disallow: /?s=
+
+Sitemap: https://checkmyboxes.com/sitemap.xml
