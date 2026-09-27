@@ -2,12 +2,14 @@ import { ImageResponse, loadGoogleFont } from 'workers-og';
 import { decodeChecklist } from './lib/decode.js';
 import { getTheme } from './lib/themes.js';
 
+// Note: this is NOT for real HTML — the html string below goes straight
+// into workers-og's renderer, which draws text nodes literally rather than
+// parsing entities the way a browser would. Writing "&amp;" here would
+// draw the literal letters a-m-p onto the image instead of "&". So this
+// only neutralizes the two characters that could break the div/span
+// structure itself, and leaves everything else — including & — untouched.
 function escapeHtml(str) {
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+  return String(str).replace(/[<>]/g, '');
 }
 
 function truncate(str, max) {
