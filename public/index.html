@@ -357,6 +357,32 @@
     color: var(--muted);
     margin-top: 10px;
   }
+  .email-btn {
+    width: 100%;
+    padding: 13px;
+    border-radius: 16px;
+    border: 1px solid var(--line);
+    background: transparent;
+    color: var(--ink);
+    font-family: 'Work Sans', sans-serif;
+    font-weight: 600;
+    font-size: 14.5px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 10px;
+    transition: transform 0.12s ease, border-color 0.15s ease;
+  }
+  .email-btn:active { transform: scale(0.98); }
+  .email-btn:hover { border-color: var(--accent); }
+  .email-hint {
+    text-align: center;
+    font-size: 12.5px;
+    color: var(--muted);
+    margin-top: 10px;
+  }
 
   /* ---- Celebration ---- */
   .celebrate-banner {
@@ -535,6 +561,12 @@
     Copy shareable link
   </button>
   <div class="share-hint" id="shareHint">Opens exactly like this for whoever you send it to.</div>
+
+  <button class="email-btn" id="emailBtn">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/><path d="M22 6l-10 7L2 6"/></svg>
+    Copy for email
+  </button>
+  <div class="email-hint" id="emailHint">Pastes the title, list, and a link to check things off — for Gmail, Outlook, or Apple Mail.</div>
   </div>
 
   <div class="ad-slot" id="adSlotBottom" aria-label="Advertisement"></div>
@@ -1175,6 +1207,64 @@
     } catch(e){
       hint.textContent = url;
     }
+  });
+
+  // Regular email inboxes (Gmail, Outlook, Apple Mail) don't unfurl a
+  // pasted link into a preview card the way texting apps do — there's no
+  // fix for that via meta tags, since the email client never fetches the
+  // page at all. So instead, this copies actual rich content (an HTML
+  // version with the title, the image card, and the item list, plus a
+  // plain-text fallback) to the clipboard. Pasting that into an email's
+  // compose window inserts it as formatted content, not just a bare link.
+  function escapeHtmlClient(str){
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  document.getElementById('emailBtn').addEventListener('click', async () => {
+    syncUrl();
+    const url = window.location.href;
+    const hint = document.getElementById('emailHint');
+    const ogUrl = `${window.location.origin}/api/og?s=${encodeURIComponent(encodeState())}`;
+    const shown = state.items.slice(0, 10);
+    const extra = state.items.length - shown.length;
+    const titleText = state.title || 'Untitled checklist';
+
+    const listHtml = shown.map(i =>
+      `<li style="margin-bottom:4px;${i.done ? 'text-decoration:line-through;color:#8A7D6B;' : ''}">${i.done ? '☑' : '☐'} ${escapeHtmlClient(i.text)}</li>`
+    ).join('');
+    const extraHtml = extra > 0 ? `<li style="color:#8A7D6B;">…and ${extra} more</li>` : '';
+    const html = `<div style="font-family:Georgia,'Times New Roman',serif;max-width:600px;">`
+      + `<h2 style="margin:0 0 12px;font-size:22px;">${escapeHtmlClient(titleText)}</h2>`
+      + `<img src="${ogUrl}" alt="${escapeHtmlClient(titleText)} checklist preview" width="600" style="max-width:100%;border-radius:12px;margin-bottom:14px;display:block;">`
+      + `<ul style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;padding-left:22px;margin:0 0 14px;">${listHtml}${extraHtml}</ul>`
+      + `<p style="font-family:Arial,Helvetica,sans-serif;font-size:14px;margin:0;"><a href="${url}">Open and check things off →</a></p>`
+      + `</div>`;
+
+    const text = `${titleText}\n\n`
+      + shown.map(i => `${i.done ? '[x]' : '[ ]'} ${i.text}`).join('\n')
+      + (extra > 0 ? `\n…and ${extra} more` : '')
+      + `\n\nOpen and check things off: ${url}`;
+
+    try {
+      const item = new ClipboardItem({
+        'text/plain': new Blob([text], { type: 'text/plain' }),
+        'text/html': new Blob([html], { type: 'text/html' }),
+      });
+      await navigator.clipboard.write([item]);
+      hint.textContent = 'Copied — paste into your email.';
+    } catch(e){
+      try {
+        await navigator.clipboard.writeText(text);
+        hint.textContent = 'Copied as plain text — paste into your email.';
+      } catch(e2){
+        hint.textContent = 'Copy failed — try the share link instead.';
+      }
+    }
+    setTimeout(() => { hint.textContent = 'Pastes the title, list, and a link to check things off — for Gmail, Outlook, or Apple Mail.'; }, 3400);
   });
 
   window.addEventListener('resize', () => {

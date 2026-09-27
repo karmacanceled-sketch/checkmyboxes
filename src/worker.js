@@ -10,52 +10,75 @@ function escapeHtml(str) {
     .replace(/"/g, '&quot;');
 }
 
+function truncate(str, max) {
+  const s = String(str);
+  return s.length > max ? s.slice(0, max - 1).trimEnd() + '…' : s;
+}
+
+const MAX_OG_ROWS = 10;
+
 // GET /api/og?s=<same encoded checklist as the share link>
-// Renders a 1200x630 preview card for that specific checklist (title,
-// theme colors, progress). Called with no ?s= it renders the generic
-// brand card used as the site's default og:image.
+// Renders a 1200x630 preview card: title, progress, and up to 10 of the
+// checklist's own items with their checked state, so a link preview shows
+// what's actually on the list instead of just a title and a progress bar.
+// Called with no ?s= it renders the generic brand card used as the site's
+// default og:image.
 async function renderOgImage(url) {
   const encoded = url.searchParams.get('s');
   const state = decodeChecklist(encoded);
 
   const hasList = !!state;
   const title = hasList ? ((state.title && state.title.trim()) || 'Untitled checklist') : 'CheckMyBoxes';
-  const total = hasList ? state.items.length : 0;
-  const done = hasList ? state.items.filter((i) => i.done).length : 0;
+  const displayTitle = truncate(title, 38);
+  const rawItems = hasList ? state.items : [];
+  const total = rawItems.length;
+  const done = rawItems.filter((i) => i.done).length;
   const theme = getTheme(hasList ? state.theme : 'fresh-start');
-  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
 
   const subtitle = hasList
     ? (total > 0 ? `${done} of ${total} checked off` : 'An empty checklist, ready to fill')
     : 'A checklist worth sending';
 
-  const showBar = hasList && total > 0;
-  const titleSize = title.length > 30 ? 54 : title.length > 18 ? 62 : 72;
+  const showExtra = total > MAX_OG_ROWS;
+  const visibleItems = showExtra ? rawItems.slice(0, MAX_OG_ROWS - 1) : rawItems.slice(0, MAX_OG_ROWS);
+  const extraCount = showExtra ? total - visibleItems.length : 0;
+
+  const itemRows = visibleItems.map((item) => `
+    <div style="display:flex;align-items:center;margin-top:10px;">
+      <div style="display:flex;width:18px;height:18px;border-radius:5px;border:2px solid ${item.done ? theme.accent : theme.muted};background:${item.done ? theme.accent : 'transparent'};"></div>
+      <div style="display:flex;margin-left:14px;font-family:'Work Sans';font-size:22px;color:${item.done ? theme.muted : theme.ink};${item.done ? 'text-decoration:line-through;' : ''}">${escapeHtml(truncate(item.text, 62))}</div>
+    </div>
+  `).join('');
+
+  const extraRow = extraCount > 0 ? `
+    <div style="display:flex;align-items:center;margin-top:10px;">
+      <div style="display:flex;margin-left:32px;font-family:'Work Sans';font-size:20px;color:${theme.muted};">+${extraCount} more</div>
+    </div>
+  ` : '';
 
   const html = `
-    <div style="display:flex;flex-direction:column;justify-content:space-between;width:1200px;height:630px;padding:72px;background:${theme.bg};">
-      <div style="display:flex;align-items:center;font-family:'Work Sans';font-size:32px;font-weight:600;color:${theme.accent};">
-        CheckMyBoxes
-      </div>
-      <div style="display:flex;flex-direction:column;max-width:1020px;">
-        <div style="display:flex;font-family:'Fraunces';font-size:${titleSize}px;font-weight:700;color:${theme.ink};line-height:1.1;">
-          ${escapeHtml(title)}
-        </div>
-        <div style="display:flex;margin-top:26px;font-family:'Work Sans';font-size:30px;font-weight:600;color:${theme.muted};">
-          ${escapeHtml(subtitle)}
-        </div>
-        ${showBar ? `
-        <div style="display:flex;margin-top:30px;width:680px;height:20px;background:${theme.line};border-radius:99px;">
-          <div style="display:flex;width:${Math.max(pct, 4)}%;height:20px;background:${theme.accent};border-radius:99px;"></div>
-        </div>` : ''}
+    <div style="display:flex;flex-direction:column;width:1200px;height:630px;padding:52px 56px;background:${theme.bg};">
+      <div style="display:flex;align-items:center;font-family:'Work Sans';font-size:26px;font-weight:600;color:${theme.accent};">CheckMyBoxes</div>
+      <div style="display:flex;margin-top:14px;font-family:'Fraunces';font-size:44px;font-weight:700;color:${theme.ink};line-height:1.1;">${escapeHtml(displayTitle)}</div>
+      <div style="display:flex;margin-top:8px;font-family:'Work Sans';font-size:22px;font-weight:600;color:${theme.muted};">${escapeHtml(subtitle)}</div>
+      <div style="display:flex;flex-direction:column;margin-top:16px;">
+        ${itemRows}
+        ${extraRow}
       </div>
     </div>
   `;
 
+  const workSansText = [
+    'CheckMyBoxes', subtitle,
+    ...visibleItems.map((i) => truncate(i.text, 62)),
+    extraCount > 0 ? `+${extraCount} more` : '',
+    '0123456789',
+  ].join(' ');
+
   try {
     const [titleFont, bodyFont] = await Promise.all([
-      loadGoogleFont({ family: 'Fraunces', weight: 700, text: title.slice(0, 100) + 'CheckMyBoxes' }),
-      loadGoogleFont({ family: 'Work Sans', weight: 600, text: subtitle + 'CheckMyBoxes0123456789' }),
+      loadGoogleFont({ family: 'Fraunces', weight: 700, text: displayTitle }),
+      loadGoogleFont({ family: 'Work Sans', weight: 600, text: workSansText }),
     ]);
 
     const image = new ImageResponse(html, {
