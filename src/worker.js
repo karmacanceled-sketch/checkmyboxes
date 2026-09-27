@@ -52,7 +52,7 @@ async function renderOgImage(url) {
 
   const extraRow = extraCount > 0 ? `
     <div style="display:flex;align-items:center;margin-top:10px;">
-      <div style="display:flex;margin-left:32px;font-family:'Work Sans';font-size:20px;color:${theme.muted};">+${extraCount} more</div>
+      <div style="display:flex;margin-left:32px;font-family:'Work Sans';font-size:20px;color:${theme.muted};">and ${extraCount} more</div>
     </div>
   ` : '';
 
@@ -71,7 +71,7 @@ async function renderOgImage(url) {
   const workSansText = [
     'CheckMyBoxes', subtitle,
     ...visibleItems.map((i) => truncate(i.text, 62)),
-    extraCount > 0 ? `+${extraCount} more` : '',
+    extraCount > 0 ? `and ${extraCount} more` : '',
     '0123456789',
   ].join(' ');
 
