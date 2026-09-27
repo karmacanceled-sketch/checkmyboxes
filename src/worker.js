@@ -70,17 +70,15 @@ async function renderOgImage(url) {
     </div>
   `;
 
-  const workSansText = [
-    'CheckMyBoxes', subtitle,
-    ...visibleItems.map((i) => truncate(i.text, 62)),
-    extraCount > 0 ? `and ${extraCount} more` : '',
-    '0123456789',
-  ].join(' ');
-
   try {
+    // Deliberately not passing `text` here to subset the font: with
+    // dynamic, unpredictable checklist content, text-based subsetting was
+    // unreliably dropping unrelated glyphs (space, common letters) on
+    // some requests. Loading the full font is slightly heavier but always
+    // correct — worth it for something rendered on demand, not per pageview.
     const [titleFont, bodyFont] = await Promise.all([
-      loadGoogleFont({ family: 'Fraunces', weight: 700, text: displayTitle }),
-      loadGoogleFont({ family: 'Work Sans', weight: 600, text: workSansText }),
+      loadGoogleFont({ family: 'Fraunces', weight: 700 }),
+      loadGoogleFont({ family: 'Work Sans', weight: 600 }),
     ]);
 
     const image = new ImageResponse(html, {
