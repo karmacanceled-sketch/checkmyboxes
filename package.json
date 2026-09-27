@@ -1,0 +1,16 @@
+{
+  "name": "checkmyboxes",
+  "private": true,
+  "description": "CheckMyBoxes — a shareable, themeable checklist. A Cloudflare Worker serving a static site (public/) with dynamic per-checklist link previews (src/worker.js).",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "lz-string": "1.5.0",
+    "workers-og": "0.0.27"
+  },
+  "devDependencies": {
+    "wrangler": "4.142.0"
+  }
+}

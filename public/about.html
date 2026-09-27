@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>About — CheckMyBoxes</title>
+<meta name="description" content="What CheckMyBoxes is, why it exists, and how a checklist app can work with no accounts and no database.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/styles/legal.css">
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">
+    <a class="brand-name" href="/">CheckMy<em>Boxes</em></a>
+    <a class="back-link" href="/">← Back to a checklist</a>
+  </div>
+
+  <h1>About CheckMyBoxes</h1>
+  <div class="updated">A checklist you can actually send someone.</div>
+
+  <p>Most checklist apps want you to make an account before you can share anything. CheckMyBoxes doesn't. Build a list, pick a look you like, and hit "copy shareable link" — the whole checklist, including every item and whether it's checked, is packed into that one link. Text it, email it, drop it in a group chat. Whoever opens it sees exactly what you made.</p>
+
+  <h2>How it actually works</h2>
+  <p>There's no account and no database behind this site. When you build a checklist, your browser compresses it and writes it directly into the page's URL. Opening that link decompresses it back into a checklist — nothing is fetched from a server to render your list. That's also why it's fast: the page is just a static file, wherever you open it.</p>
+  <p>The one exception is link previews. When you text or message a link, apps like iMessage, Telegram, or Discord ask our server for a quick preview card before anyone taps it — a small helper on our end reads the checklist in the link long enough to generate that one preview image, then forgets it. Nothing about your list is stored afterward.</p>
+
+  <h2>Why it exists</h2>
+  <p>Packing lists, moving-day checklists, grocery runs — these are almost always things one person plans and other people need to see. A screenshot doesn't update. A shared doc needs a login. A link that just <em>is</em> the checklist felt like the obvious answer, so we built it.</p>
+
+  <h2>Who's behind it</h2>
+  <p>CheckMyBoxes is an independently built, small project. If you run into something broken or have an idea for a template or theme, the <a href="/contact.html">contact page</a> goes straight to a real inbox.</p>
+
+  <footer class="site-footer">
+    <a href="/about.html">About</a> · <a href="/privacy.html">Privacy</a> · <a href="/contact.html">Contact</a>
+    <div>© 2026 CheckMyBoxes</div>
+  </footer>
+</div>
+</body>
+</html>

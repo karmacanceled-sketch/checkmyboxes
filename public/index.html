@@ -1,0 +1,1190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>CheckMyBoxes — a checklist worth sending</title>
+<meta name="description" content="A checklist for camping trips, grocery runs, errands, moving day — anything. Pick a look, text the link.">
+<link rel="canonical" href="https://checkmyboxes.com/">
+
+<!-- These four are placeholders. src/worker.js rewrites them per-request
+     when a link carries a checklist (?s=...), so the preview shown in
+     iMessage/Telegram/Discord/etc. reflects that specific list's title,
+     theme, and progress instead of this generic default. -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="CheckMyBoxes">
+<meta property="og:url" content="https://checkmyboxes.com/">
+<meta property="og:title" content="CheckMyBoxes — a checklist worth sending">
+<meta property="og:description" content="A checklist for camping trips, grocery runs, errands, moving day — anything. Pick a look, text the link.">
+<meta property="og:image" content="https://checkmyboxes.com/api/og">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="CheckMyBoxes — a checklist worth sending">
+<meta name="twitter:description" content="A checklist for camping trips, grocery runs, errands, moving day — anything. Pick a look, text the link.">
+<meta name="twitter:image" content="https://checkmyboxes.com/api/og">
+
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22><rect x=%222%22 y=%222%22 width=%2220%22 height=%2220%22 rx=%225%22 fill=%22%23E8703A%22/><path d=%22M6.5 12.5l3.2 3.2 7.3-7.8%22 stroke=%22white%22 stroke-width=%222.6%22 fill=%22none%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22/></svg>">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Work+Sans:wght@400;500;600&family=VT323&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.5.0/lz-string.min.js"></script>
+
+<!-- Google AdSense: paste the verification/loader script tag here once your
+     AdSense application is approved. Leave it out until then. -->
+<!-- <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX" crossorigin="anonymous"></script> -->
+
+<style>
+  :root {
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+
+    /* Theme 1 — Fresh Start (default) */
+    --bg: #FBF4EC;
+    --bg2: #F3E4D0;
+    --ink: #2B241C;
+    --accent: #E8703A;
+    --accent-ink: #FFFFFF;
+    --card: #FFFFFF;
+    --line: #E4D6C3;
+    --muted: #8A7D6B;
+    --motif-opacity: 0.10;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); height: 100%; }
+  body {
+    height: 100%;
+    margin: 0;
+    font-family: 'Work Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    transition: background 0.4s ease, color 0.4s ease;
+    -webkit-font-smoothing: antialiased;
+    position: relative;
+    overflow-x: hidden;
+  }
+  .motif-layer {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    opacity: var(--motif-opacity);
+    transition: opacity 0.4s ease;
+  }
+  .wrap {
+    position: relative;
+    z-index: 1;
+    max-width: 560px;
+    margin: 0 auto;
+    padding: 28px 20px 40px;
+  }
+
+  /* ---- Header ---- */
+  .brand {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 22px;
+  }
+  .brand-name {
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 20px;
+    letter-spacing: -0.01em;
+  }
+  .brand-name em { font-style: normal; color: var(--accent); }
+
+  /* ---- Ad slots ---- */
+  .ad-slot {
+    width: 100%;
+    min-height: 90px;
+    margin-bottom: 22px;
+    border: 1px dashed var(--line);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--muted);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    background: var(--card);
+    opacity: 0.6;
+    overflow: hidden;
+  }
+  .ad-slot:empty::before { content: 'Ad space'; }
+
+  /* ---- Theme picker ---- */
+  .theme-picker {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 26px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .swatch {
+    flex: 0 0 auto;
+    width: 58px;
+    height: 58px;
+    border-radius: 16px;
+    border: 2px solid transparent;
+    cursor: pointer;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    transition: transform 0.15s ease, border-color 0.15s ease;
+  }
+  .swatch:active { transform: scale(0.94); }
+  .swatch.active { border-color: var(--ink); }
+  .swatch.active::after {
+    content: '';
+    position: absolute;
+    bottom: -9px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 4px; height: 4px;
+    border-radius: 50%;
+    background: var(--ink);
+  }
+
+  /* ---- Template picker ---- */
+  .template-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+  .template-pill {
+    border: 1px solid var(--line);
+    background: var(--card);
+    color: var(--ink);
+    border-radius: 99px;
+    padding: 7px 14px;
+    font-size: 13px;
+    font-family: 'Work Sans', sans-serif;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: border-color 0.15s ease, transform 0.1s ease;
+  }
+  .template-pill:active { transform: scale(0.96); }
+  .template-pill.active { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+
+  /* ---- Owner / guest controls ---- */
+  .lock-row {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    font-size: 13.5px;
+    color: var(--muted);
+    margin-bottom: 24px;
+    cursor: pointer;
+    user-select: none;
+  }
+  .lock-row input {
+    width: 17px; height: 17px;
+    accent-color: var(--accent);
+    cursor: pointer;
+  }
+  .guest-banner {
+    display: none;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 10px 14px;
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 22px;
+  }
+  .guest-banner.show { display: block; }
+  .item-text[readonly] { pointer-events: none; }
+  .item.locked .item-remove,
+  .item.locked .item-text::placeholder { opacity: 0; }
+
+  /* ---- Title ---- */
+  .title-field {
+    font-family: 'Fraunces', serif;
+    font-weight: 700;
+    font-size: 34px;
+    line-height: 1.08;
+    letter-spacing: -0.015em;
+    width: 100%;
+    border: none;
+    background: transparent;
+    color: var(--ink);
+    padding: 0;
+    margin-bottom: 6px;
+    outline: none;
+  }
+  .title-field::placeholder { color: var(--muted); opacity: 0.6; }
+  .subtitle {
+    color: var(--muted);
+    font-size: 14px;
+    margin-bottom: 22px;
+  }
+
+  /* ---- Progress ---- */
+  .progress-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  .progress-track {
+    flex: 1;
+    height: 8px;
+    background: var(--line);
+    border-radius: 99px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    width: 0%;
+    background: var(--accent);
+    border-radius: 99px;
+    transition: width 0.35s cubic-bezier(.4,1.4,.6,1);
+  }
+  .progress-label {
+    font-size: 13px;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  /* ---- List ---- */
+  .list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+  .item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 13px 14px;
+  }
+  .check {
+    flex: 0 0 auto;
+    width: 24px; height: 24px;
+    border-radius: 8px;
+    border: 2px solid var(--muted);
+    background: transparent;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+  }
+  .check svg { opacity: 0; transform: scale(0.5); transition: opacity 0.15s ease, transform 0.15s ease; width: 14px; height: 14px; }
+  .item.done .check { background: var(--accent); border-color: var(--accent); }
+  .item.done .check svg { opacity: 1; transform: scale(1); }
+  .item.done .item-text { text-decoration: line-through; color: var(--muted); }
+  .item-text {
+    flex: 1;
+    font-size: 15px;
+    line-height: 1.4;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--ink);
+    font-family: inherit;
+    padding: 2px 0;
+  }
+  .item-remove {
+    flex: 0 0 auto;
+    width: 22px; height: 22px;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+    opacity: 0.5;
+  }
+  .item-remove:hover { opacity: 1; }
+
+  .add-row {
+    display: flex;
+    gap: 10px;
+    margin: 16px 0 28px;
+  }
+  .add-input {
+    flex: 1;
+    border: 1px dashed var(--muted);
+    border-radius: 14px;
+    padding: 13px 14px;
+    font-size: 15px;
+    font-family: inherit;
+    background: transparent;
+    color: var(--ink);
+    outline: none;
+  }
+  .add-input:focus { border-style: solid; border-color: var(--accent); }
+  .add-btn {
+    flex: 0 0 auto;
+    width: 48px;
+    border-radius: 14px;
+    border: none;
+    background: var(--ink);
+    color: var(--bg);
+    font-size: 22px;
+    cursor: pointer;
+  }
+
+  /* ---- Share ---- */
+  .share-btn {
+    width: 100%;
+    padding: 16px;
+    border-radius: 16px;
+    border: none;
+    background: var(--accent);
+    color: var(--accent-ink);
+    font-family: 'Work Sans', sans-serif;
+    font-weight: 600;
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: transform 0.12s ease;
+  }
+  .share-btn:active { transform: scale(0.98); }
+  .share-hint {
+    text-align: center;
+    font-size: 12.5px;
+    color: var(--muted);
+    margin-top: 10px;
+  }
+
+  /* ---- Celebration ---- */
+  .celebrate-banner {
+    text-align: center;
+    font-family: 'Fraunces', serif;
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--accent);
+    margin-bottom: 18px;
+    opacity: 0;
+    max-height: 0;
+    overflow: hidden;
+    transition: opacity 0.3s ease, max-height 0.3s ease, margin 0.3s ease;
+  }
+  .celebrate-banner.show { opacity: 1; max-height: 60px; margin-bottom: 18px; }
+
+  .confetti-piece {
+    position: fixed;
+    top: -20px;
+    z-index: 5;
+    pointer-events: none;
+    border-radius: 2px;
+    animation: fall linear forwards;
+  }
+  @keyframes fall {
+    to { transform: translateY(110vh) rotate(540deg); }
+  }
+
+  /* ---- Explode / gone screen ---- */
+  #mainContent.exploding {
+    animation: shrinkAway 0.6s ease forwards;
+  }
+  @keyframes shrinkAway {
+    0% { transform: scale(1); opacity: 1; }
+    60% { transform: scale(1.03); opacity: 1; }
+    100% { transform: scale(0.9); opacity: 0; }
+  }
+  .gone-screen {
+    display: none;
+    text-align: center;
+    padding: 60px 10px 20px;
+  }
+  .gone-screen.show { display: block; }
+  .gone-emoji { font-size: 44px; margin-bottom: 14px; }
+  .gone-title {
+    font-family: 'Fraunces', serif;
+    font-weight: 700;
+    font-size: 24px;
+    margin-bottom: 8px;
+  }
+  .gone-sub { color: var(--muted); font-size: 14px; margin-bottom: 26px; }
+  .gone-btn {
+    padding: 13px 22px;
+    border-radius: 14px;
+    border: 1px solid var(--line);
+    background: var(--card);
+    color: var(--ink);
+    font-family: 'Work Sans', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+  }
+
+  /* ---- Footer ---- */
+  .site-footer {
+    text-align: center;
+    margin-top: 36px;
+    padding-top: 20px;
+    border-top: 1px solid var(--line);
+    font-size: 12.5px;
+    color: var(--muted);
+  }
+  .site-footer a { color: var(--muted); text-decoration: underline; margin: 0 6px; }
+  .site-footer a:hover { color: var(--ink); }
+  .footer-copy { margin-top: 8px; opacity: 0.75; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .confetti-piece { animation: none; display: none; }
+    * { transition: none !important; }
+  }
+
+  /* ---- Vintage skin (Y2K Desktop) — overrides, not just colors ---- */
+  body.theme-win95 {
+    font-family: 'VT323', 'Courier New', monospace;
+    background-image:
+      repeating-linear-gradient(45deg, rgba(0,0,0,0.035) 0 2px, transparent 2px 8px);
+  }
+  body.theme-win95 .brand-name,
+  body.theme-win95 .title-field,
+  body.theme-win95 .gone-title { font-family: 'VT323', 'Courier New', monospace; letter-spacing: 0.02em; }
+  body.theme-win95 .title-field { font-size: 30px; }
+  body.theme-win95 * { border-radius: 0 !important; }
+  body.theme-win95 .swatch.active { outline: 2px dotted var(--ink); outline-offset: 2px; border-color: transparent; }
+  body.theme-win95 .item,
+  body.theme-win95 .add-input,
+  body.theme-win95 .ad-slot,
+  body.theme-win95 .gone-screen .gone-btn {
+    border-style: outset !important;
+    border-width: 2px !important;
+    border-color: #fff #6b6b6b #6b6b6b #fff !important;
+    background: var(--card);
+  }
+  body.theme-win95 .check {
+    border-radius: 0 !important;
+    border-style: inset !important;
+    border-width: 2px !important;
+    border-color: #6b6b6b #fff #fff #6b6b6b !important;
+  }
+  body.theme-win95 .item.done .check { border-style: outset !important; border-color: #fff #6b6b6b #6b6b6b #fff !important; }
+  body.theme-win95 .share-btn,
+  body.theme-win95 .template-pill {
+    border-style: outset !important;
+    border-width: 2px !important;
+    border-color: #fff #6b6b6b #6b6b6b #fff !important;
+  }
+  body.theme-win95 .share-btn:active,
+  body.theme-win95 .template-pill:active {
+    border-style: inset !important;
+    border-color: #6b6b6b #fff #fff #6b6b6b !important;
+  }
+  body.theme-win95 .template-pill.active {
+    border-style: inset !important;
+    border-color: #6b6b6b #fff #fff #6b6b6b !important;
+    color: var(--ink);
+  }
+  body.theme-win95 .progress-track { border: 2px inset #6b6b6b; border-radius: 0 !important; background: #fff; }
+  body.theme-win95 .progress-fill { border-radius: 0 !important; }
+</style>
+</head>
+<body>
+
+<svg class="motif-layer" id="motifLayer" xmlns="http://www.w3.org/2000/svg"></svg>
+
+<div class="wrap">
+
+  <div class="brand">
+    <div class="brand-name">CheckMy<em>Boxes</em></div>
+  </div>
+
+  <div class="ad-slot" id="adSlotTop" aria-label="Advertisement"></div>
+
+  <div class="template-row" id="templateRow"></div>
+
+  <div class="theme-picker" id="themePicker"></div>
+
+  <input class="title-field" id="titleField" placeholder="Untitled checklist" maxlength="60">
+  <div class="subtitle" id="subtitleText">For camping trips, grocery runs, errands, moving day — anything.</div>
+
+  <label class="lock-row" id="lockRow">
+    <input type="checkbox" id="lockToggle">
+    <span>Let the person I send this to edit it too</span>
+  </label>
+  <label class="lock-row" id="explodeRow">
+    <input type="checkbox" id="explodeToggle">
+    <span>Make it disappear once everything's checked off</span>
+  </label>
+  <div class="guest-banner" id="guestBanner">You're viewing a list someone sent you — check things off as you go.</div>
+
+  <div id="mainContent">
+  <div class="progress-row">
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    <div class="progress-label" id="progressLabel">0 / 0</div>
+  </div>
+
+  <div class="celebrate-banner" id="celebrateBanner">✓ All done. Nicely done.</div>
+
+  <div class="list" id="list"></div>
+
+  <div class="add-row">
+    <input class="add-input" id="addInput" placeholder="Add an item…" maxlength="80">
+    <button class="add-btn" id="addBtn" aria-label="Add item">+</button>
+  </div>
+
+  <button class="share-btn" id="shareBtn">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+    Copy shareable link
+  </button>
+  <div class="share-hint" id="shareHint">Opens exactly like this for whoever you send it to.</div>
+  </div>
+
+  <div class="ad-slot" id="adSlotBottom" aria-label="Advertisement"></div>
+
+  <div class="gone-screen" id="goneScreen">
+    <div class="gone-emoji">💥</div>
+    <div class="gone-title">All done. This one's gone.</div>
+    <div class="gone-sub">Whoever checked the last box popped it.</div>
+    <button class="gone-btn" id="goneNewBtn">Make a new list</button>
+  </div>
+
+  <footer class="site-footer">
+    <a href="/about.html">About</a> · <a href="/privacy.html">Privacy</a> · <a href="/contact.html">Contact</a>
+    <div class="footer-copy">© 2026 CheckMyBoxes</div>
+  </footer>
+
+</div>
+
+<script>
+(function(){
+
+  // ---------------------------------------------------------
+  // THEMES
+  // ---------------------------------------------------------
+  const THEMES = [
+    {
+      id: 'fresh-start',
+      label: 'Fresh Start',
+      swatch: '#E8703A',
+      icon: '☀️',
+      vars: { '--bg':'#FBF4EC', '--bg2':'#F3E4D0', '--ink':'#2B241C', '--accent':'#E8703A', '--accent-ink':'#FFFFFF', '--card':'#FFFFFF', '--line':'#E4D6C3', '--muted':'#8A7D6B', '--motif-opacity':'0.10' },
+      motif: (w,h) => sunMotif(w,h)
+    },
+    {
+      id: 'boxed-up',
+      label: 'Boxed Up',
+      swatch: '#C08A4E',
+      icon: '📦',
+      vars: { '--bg':'#EFE1C6', '--bg2':'#E3CE9F', '--ink':'#3B2E1A', '--accent':'#A6521F', '--accent-ink':'#FFF7EC', '--card':'#F8EFDA', '--line':'#D8C296', '--muted':'#8F7A52', '--motif-opacity':'0.14' },
+      motif: (w,h) => boxMotif(w,h)
+    },
+    {
+      id: 'new-nest',
+      label: 'New Nest',
+      swatch: '#5C7A5A',
+      icon: '🌿',
+      vars: { '--bg':'#F1F3E9', '--bg2':'#E1E8D2', '--ink':'#26311F', '--accent':'#5C7A5A', '--accent-ink':'#FFFFFF', '--card':'#FBFCF7', '--line':'#D6DEC4', '--muted':'#7C8B6E', '--motif-opacity':'0.12' },
+      motif: (w,h) => leafMotif(w,h)
+    },
+    {
+      id: 'road-trip',
+      label: 'Road Trip',
+      swatch: '#2E6E7A',
+      icon: '🛣️',
+      vars: { '--bg':'#EAF2F1', '--bg2':'#D3E5E2', '--ink':'#1E3436', '--accent':'#D3572E', '--accent-ink':'#FFFFFF', '--card':'#FFFFFF', '--line':'#C7DEDA', '--muted':'#5E7C7A', '--motif-opacity':'0.10' },
+      motif: (w,h) => roadMotif(w,h)
+    },
+    {
+      id: 'clean-slate',
+      label: 'Clean Slate',
+      swatch: '#22242A',
+      icon: '⬛',
+      vars: { '--bg':'#F4F4F2', '--bg2':'#E7E7E3', '--ink':'#1B1C20', '--accent':'#1B1C20', '--accent-ink':'#F4F4F2', '--card':'#FFFFFF', '--line':'#DEDEDA', '--muted':'#8A8A85', '--motif-opacity':'0.055' },
+      motif: (w,h) => gridMotif(w,h)
+    },
+    {
+      id: 'win95',
+      label: 'Y2K Desktop',
+      swatch: '#008080',
+      icon: '🖥️',
+      vars: { '--bg':'#008080', '--bg2':'#00A0A0', '--ink':'#000000', '--accent':'#000080', '--accent-ink':'#FFFFFF', '--card':'#C0C0C0', '--line':'#6b6b6b', '--muted':'#333333', '--motif-opacity':'0.16' },
+      motif: (w,h) => winMotif(w,h)
+    }
+  ];
+
+  // ---------------------------------------------------------
+  // MOTIF GENERATORS (inline SVG, tiled/scattered background art)
+  // ---------------------------------------------------------
+  function svgEl(tag, attrs){
+    const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+    for (const k in attrs) el.setAttribute(k, attrs[k]);
+    return el;
+  }
+  function sunMotif(w,h){
+    const g = svgEl('g', {});
+    const cx = w*0.85, cy = h*0.08, r = Math.min(w,h)*0.14;
+    g.appendChild(svgEl('circle', {cx, cy, r, fill:'currentColor'}));
+    for (let i=0;i<10;i++){
+      const a = (i/10)*Math.PI*2;
+      const x1 = cx + Math.cos(a)*r*1.4, y1 = cy + Math.sin(a)*r*1.4;
+      const x2 = cx + Math.cos(a)*r*2.1, y2 = cy + Math.sin(a)*r*2.1;
+      g.appendChild(svgEl('line', {x1,y1,x2,y2, stroke:'currentColor', 'stroke-width':4, 'stroke-linecap':'round'}));
+    }
+    const cx2 = w*0.08, cy2 = h*0.75, r2 = Math.min(w,h)*0.09;
+    g.appendChild(svgEl('circle', {cx:cx2, cy:cy2, r:r2, fill:'currentColor'}));
+    return g;
+  }
+  function boxMotif(w,h){
+    const g = svgEl('g', {});
+    function box(x,y,s,rot){
+      const b = svgEl('g', {transform:`translate(${x} ${y}) rotate(${rot})`});
+      b.appendChild(svgEl('rect', {x:-s/2,y:-s/2,width:s,height:s,fill:'none',stroke:'currentColor','stroke-width':5}));
+      b.appendChild(svgEl('line', {x1:-s/2,y1:-s/2,x2:0,y2:-s/1.4,stroke:'currentColor','stroke-width':5}));
+      b.appendChild(svgEl('line', {x1:s/2,y1:-s/2,x2:0,y2:-s/1.4,stroke:'currentColor','stroke-width':5}));
+      b.appendChild(svgEl('line', {x1:0,y1:-s/2,x2:0,y2:s/2,stroke:'currentColor','stroke-width':4}));
+      g.appendChild(b);
+    }
+    box(w*0.82,h*0.14,Math.min(w,h)*0.22,8);
+    box(w*0.10,h*0.80,Math.min(w,h)*0.26,-6);
+    box(w*0.90,h*0.85,Math.min(w,h)*0.16,14);
+    return g;
+  }
+  function leafMotif(w,h){
+    const g = svgEl('g', {});
+    function leaf(x,y,s,rot){
+      const l = svgEl('path', {
+        d:`M0,0 C${s*0.6},${-s*0.5} ${s},${-s*0.2} ${s},0 C${s},${s*0.2} ${s*0.6},${s*0.5} 0,0 Z`,
+        fill:'currentColor',
+        transform:`translate(${x} ${y}) rotate(${rot})`
+      });
+      g.appendChild(l);
+    }
+    leaf(w*0.85,h*0.10,Math.min(w,h)*0.22,20);
+    leaf(w*0.06,h*0.30,Math.min(w,h)*0.16,-40);
+    leaf(w*0.88,h*0.78,Math.min(w,h)*0.20,100);
+    leaf(w*0.10,h*0.88,Math.min(w,h)*0.14,150);
+    return g;
+  }
+  function roadMotif(w,h){
+    const g = svgEl('g', {});
+    const path = svgEl('path', {
+      d:`M ${w*0.5},${-h*0.1} C ${w*0.1},${h*0.35} ${w*0.9},${h*0.55} ${w*0.3},${h*1.1}`,
+      fill:'none', stroke:'currentColor', 'stroke-width':18
+    });
+    g.appendChild(path);
+    const dashes = svgEl('path', {
+      d:`M ${w*0.5},${-h*0.1} C ${w*0.1},${h*0.35} ${w*0.9},${h*0.55} ${w*0.3},${h*1.1}`,
+      fill:'none', stroke:'var(--bg)', 'stroke-width':3, 'stroke-dasharray':'14 16'
+    });
+    g.appendChild(dashes);
+    const cx = w*0.82, cy = h*0.10, r = Math.min(w,h)*0.08;
+    g.appendChild(svgEl('circle', {cx,cy,r,fill:'currentColor'}));
+    return g;
+  }
+  function gridMotif(w,h){
+    const g = svgEl('g', {});
+    const size = Math.min(w,h)*0.11;
+    for (let x=size/2; x<w; x+=size){
+      for (let y=size/2; y<h; y+=size){
+        g.appendChild(svgEl('rect', {x:x-1.5,y:y-1.5,width:3,height:3,fill:'currentColor'}));
+      }
+    }
+    return g;
+  }
+  function winMotif(w,h){
+    const g = svgEl('g', {});
+    function windowIcon(x,y,s,rot){
+      const win = svgEl('g', {transform:`translate(${x} ${y}) rotate(${rot})`});
+      win.appendChild(svgEl('rect', {x:-s/2,y:-s/2,width:s,height:s*0.78,fill:'none',stroke:'currentColor','stroke-width':4}));
+      win.appendChild(svgEl('rect', {x:-s/2,y:-s/2,width:s,height:s*0.16,fill:'currentColor'}));
+      g.appendChild(win);
+    }
+    windowIcon(w*0.84, h*0.12, Math.min(w,h)*0.20, -6);
+    windowIcon(w*0.10, h*0.32, Math.min(w,h)*0.15, 8);
+    windowIcon(w*0.88, h*0.82, Math.min(w,h)*0.18, 5);
+    windowIcon(w*0.08, h*0.86, Math.min(w,h)*0.13, -10);
+    return g;
+  }
+
+  function renderMotif(theme){
+    const svg = document.getElementById('motifLayer');
+    svg.innerHTML = '';
+    const w = window.innerWidth, h = window.innerHeight;
+    svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+    svg.style.color = theme.vars['--ink'];
+    const g = theme.motif(w,h);
+    svg.appendChild(g);
+  }
+
+  // ---------------------------------------------------------
+  // TEMPLATES
+  // ---------------------------------------------------------
+  const TEMPLATES = [
+    {
+      id: 'blank',
+      label: 'Blank',
+      icon: '＋',
+      title: '',
+      theme: null,
+      items: []
+    },
+    {
+      id: 'moving',
+      label: 'Moving',
+      icon: '📦',
+      title: 'Moving checklist',
+      theme: 'boxed-up',
+      items: [
+        'Book the movers or truck',
+        'Start a box per room',
+        'Schedule utility transfers',
+        'Update your address',
+        'Forward the mail',
+        'Confirm move-in date with new place'
+      ]
+    },
+    {
+      id: 'camping',
+      label: 'Camping',
+      icon: '⛺',
+      title: 'Camping trip',
+      theme: 'new-nest',
+      items: [
+        'Tent, stakes, and mallet',
+        'Sleeping bags and pads',
+        'Cooler and ice',
+        'Headlamps or lanterns',
+        'Firewood and matches',
+        'First aid kit'
+      ]
+    },
+    {
+      id: 'grocery',
+      label: 'Grocery Run',
+      icon: '🛒',
+      title: 'Grocery run',
+      theme: 'fresh-start',
+      items: [
+        'Produce',
+        'Dairy & eggs',
+        'Meat & protein',
+        'Pantry staples',
+        'Snacks',
+        'Household supplies'
+      ]
+    },
+    {
+      id: 'errands',
+      label: 'Errand Run',
+      icon: '🏃',
+      title: 'Errands',
+      theme: 'clean-slate',
+      items: [
+        'Post office',
+        'Dry cleaning',
+        'Pharmacy pickup',
+        'Bank / ATM',
+        'Return that package',
+        'Gas up the car'
+      ]
+    },
+    {
+      id: 'weekend',
+      label: 'Weekend Trip',
+      icon: '🎒',
+      title: 'Weekend trip',
+      theme: 'road-trip',
+      items: [
+        'Phone charger',
+        'Toiletries bag',
+        'Change of clothes',
+        'Comfortable shoes',
+        'Snacks for the road',
+        'Confirm reservations'
+      ]
+    }
+  ];
+
+  function itemsFromTemplate(t){
+    return t.items.map(text => ({ text, done: false }));
+  }
+
+  // ---------------------------------------------------------
+  // STATE
+  // ---------------------------------------------------------
+  function uid(){
+    return Math.random().toString(36).slice(2,10) + Date.now().toString(36);
+  }
+
+  let state = {
+    id: uid(),
+    title: '',
+    theme: 'fresh-start',
+    locked: false,
+    explode: false,
+    items: []
+  };
+
+  // A creator's browser remembers which list IDs it made, in localStorage.
+  // There's no account and no server — this is a "this device made it" flag,
+  // not real authentication. It's enough to distinguish "my own list, on my
+  // own phone" from "a list someone sent me," which is all this needs to do.
+  const OWNED_KEY = 'cmb_owned_lists';
+  function getOwnedIds(){
+    try { return JSON.parse(localStorage.getItem(OWNED_KEY) || '[]'); }
+    catch(e){ return []; }
+  }
+  function markOwned(id){
+    try {
+      const owned = getOwnedIds();
+      if (!owned.includes(id)){
+        owned.push(id);
+        localStorage.setItem(OWNED_KEY, JSON.stringify(owned.slice(-50)));
+      }
+    } catch(e){ /* localStorage unavailable — treat every open as owner-less */ }
+  }
+  function isOwnList(id){
+    try { return getOwnedIds().includes(id); }
+    catch(e){ return false; }
+  }
+
+  // Separately, a device remembers which list IDs it watched finish and
+  // explode. Same trick, same limit: it's local to this browser, not
+  // pushed to anyone else who has the same link.
+  const EXPLODED_KEY = 'cmb_exploded_lists';
+  function getExplodedIds(){
+    try { return JSON.parse(localStorage.getItem(EXPLODED_KEY) || '[]'); }
+    catch(e){ return []; }
+  }
+  function markExploded(id){
+    try {
+      const ex = getExplodedIds();
+      if (!ex.includes(id)){
+        ex.push(id);
+        localStorage.setItem(EXPLODED_KEY, JSON.stringify(ex.slice(-50)));
+      }
+    } catch(e){ /* no-op */ }
+  }
+  function isExploded(id){
+    try { return getExplodedIds().includes(id); }
+    catch(e){ return false; }
+  }
+
+  function applyTheme(themeId){
+    const theme = THEMES.find(t => t.id === themeId) || THEMES[0];
+    const root = document.documentElement;
+    for (const k in theme.vars) root.style.setProperty(k, theme.vars[k]);
+    document.body.classList.toggle('theme-win95', theme.id === 'win95');
+    renderMotif(theme);
+    document.querySelectorAll('.swatch').forEach(s => {
+      s.classList.toggle('active', s.dataset.id === theme.id);
+    });
+  }
+
+  function buildThemePicker(){
+    const picker = document.getElementById('themePicker');
+    picker.innerHTML = '';
+    THEMES.forEach(t => {
+      const sw = document.createElement('div');
+      sw.className = 'swatch';
+      sw.dataset.id = t.id;
+      sw.title = t.label;
+      sw.style.background = t.swatch;
+      sw.textContent = t.icon;
+      sw.addEventListener('click', () => {
+        state.theme = t.id;
+        applyTheme(t.id);
+      });
+      picker.appendChild(sw);
+    });
+  }
+
+  function buildTemplateRow(){
+    const row = document.getElementById('templateRow');
+    row.innerHTML = '';
+    TEMPLATES.forEach(t => {
+      const pill = document.createElement('button');
+      pill.className = 'template-pill';
+      pill.dataset.id = t.id;
+      pill.innerHTML = `<span>${t.icon}</span><span>${t.label}</span>`;
+      pill.addEventListener('click', () => {
+        if (t.id !== 'blank'){
+          state.title = t.title;
+          state.items = itemsFromTemplate(t);
+          if (t.theme) { state.theme = t.theme; applyTheme(t.theme); }
+        } else {
+          state.title = '';
+          state.items = [];
+        }
+        document.getElementById('titleField').value = state.title;
+        renderList();
+        pulseCelebrate();
+      });
+      row.appendChild(pill);
+    });
+  }
+
+  // isOwner is computed once per page load: true for a brand-new list, or a
+  // list this same browser created earlier; false for a link someone else sent.
+  let isOwner = true;
+
+  function canEdit(){
+    return isOwner || state.locked;
+  }
+
+  function refreshOwnerUI(){
+    document.getElementById('templateRow').style.display = isOwner ? 'flex' : 'none';
+    document.getElementById('lockRow').style.display = isOwner ? 'flex' : 'none';
+    document.getElementById('explodeRow').style.display = isOwner ? 'flex' : 'none';
+    document.getElementById('guestBanner').classList.toggle('show', !isOwner);
+    document.getElementById('addInput').style.display = canEdit() ? '' : 'none';
+    document.getElementById('addBtn').style.display = canEdit() ? '' : 'none';
+    document.querySelector('.add-row').style.display = canEdit() ? 'flex' : 'none';
+  }
+
+  function renderList(){
+    const list = document.getElementById('list');
+    list.innerHTML = '';
+    const editable = canEdit();
+    state.items.forEach((item, i) => {
+      const row = document.createElement('div');
+      row.className = 'item' + (item.done ? ' done' : '') + (editable ? '' : ' locked');
+
+      const check = document.createElement('button');
+      check.className = 'check';
+      check.setAttribute('aria-label', item.done ? 'Mark not done' : 'Mark done');
+      check.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+      check.addEventListener('click', () => {
+        item.done = !item.done;
+        renderList();
+        pulseCelebrate();
+      });
+
+      const text = document.createElement('input');
+      text.className = 'item-text';
+      text.value = item.text;
+      if (!editable) text.setAttribute('readonly', 'readonly');
+      text.addEventListener('input', () => { item.text = text.value; });
+
+      row.appendChild(check);
+      row.appendChild(text);
+
+      if (editable){
+        const remove = document.createElement('button');
+        remove.className = 'item-remove';
+        remove.innerHTML = '✕';
+        remove.setAttribute('aria-label', 'Remove item');
+        remove.addEventListener('click', () => {
+          state.items.splice(i,1);
+          renderList();
+          pulseCelebrate();
+        });
+        row.appendChild(remove);
+      }
+
+      list.appendChild(row);
+    });
+    updateProgress();
+  }
+
+  function updateProgress(){
+    const total = state.items.length;
+    const done = state.items.filter(i => i.done).length;
+    const pct = total ? Math.round((done/total)*100) : 0;
+    document.getElementById('progressFill').style.width = pct + '%';
+    document.getElementById('progressLabel').textContent = `${done} / ${total}`;
+  }
+
+  let lastCelebrated = false;
+  let hasExploded = false;
+  function pulseCelebrate(){
+    updateProgress();
+    const total = state.items.length;
+    const done = state.items.filter(i => i.done).length;
+    const complete = total > 0 && done === total;
+    const banner = document.getElementById('celebrateBanner');
+    banner.classList.toggle('show', complete && !state.explode);
+    if (complete && !lastCelebrated) {
+      confettiBurst();
+      if (state.explode) triggerExplode();
+    }
+    lastCelebrated = complete;
+  }
+
+  function triggerExplode(){
+    if (hasExploded) return;
+    hasExploded = true;
+    const main = document.getElementById('mainContent');
+    confettiBurst(true);
+    main.classList.add('exploding');
+    setTimeout(() => {
+      markExploded(state.id);
+      showGoneScreen();
+    }, 650);
+  }
+
+  function showGoneScreen(){
+    document.getElementById('mainContent').style.display = 'none';
+    document.getElementById('templateRow').style.display = 'none';
+    document.getElementById('themePicker').style.display = 'none';
+    document.getElementById('titleField').style.display = 'none';
+    document.getElementById('subtitleText').style.display = 'none';
+    document.getElementById('lockRow').style.display = 'none';
+    document.getElementById('explodeRow').style.display = 'none';
+    document.getElementById('guestBanner').classList.remove('show');
+    document.getElementById('goneScreen').classList.add('show');
+  }
+
+  function confettiBurst(big){
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const colors = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
+    const palette = [colors, '#F4B942', '#E8703A', '#2E6E7A', '#5C7A5A'];
+    const count = big ? 60 : 28;
+    for (let i=0;i<count;i++){
+      const el = document.createElement('div');
+      el.className = 'confetti-piece';
+      const size = (big ? 8 : 6) + Math.random()*6;
+      el.style.width = size+'px';
+      el.style.height = (size*0.4)+'px';
+      el.style.left = (Math.random()*100)+'vw';
+      el.style.background = palette[Math.floor(Math.random()*palette.length)];
+      el.style.animationDuration = (1.4 + Math.random()*1.2)+'s';
+      el.style.transform = `rotate(${Math.random()*360}deg)`;
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 3000);
+    }
+  }
+
+  // ---------------------------------------------------------
+  // ENCODE / DECODE STATE IN THE URL
+  //
+  // State lives in a query parameter (?s=...), not a URL hash (#...).
+  // A hash is never sent to the server, so a Cloudflare Worker can't
+  // read it to build a per-checklist link preview (Open Graph image/
+  // title) — it would only ever see "checkmyboxes.com/" with nothing
+  // after it. A query string IS sent with the request, which is what
+  // src/worker.js relies on.
+  // ---------------------------------------------------------
+  function encodeState(){
+    const payload = JSON.stringify(state);
+    return LZString.compressToEncodedURIComponent(payload);
+  }
+  function decodeState(str){
+    try {
+      const json = LZString.decompressFromEncodedURIComponent(str);
+      if (!json) return null;
+      const parsed = JSON.parse(json);
+      if (!parsed || !Array.isArray(parsed.items)) return null;
+      return parsed;
+    } catch(e){ return null; }
+  }
+  function syncUrl(){
+    const s = encodeState();
+    const url = new URL(window.location.href);
+    url.search = '?s=' + s;
+    url.hash = '';
+    history.replaceState(null, '', url.pathname + url.search);
+  }
+
+  // ---------------------------------------------------------
+  // WIRE UP
+  // ---------------------------------------------------------
+  buildThemePicker();
+  buildTemplateRow();
+
+  const params = new URLSearchParams(window.location.search);
+  const fromQuery = params.get('s');
+  const fromHash = window.location.hash.slice(1); // old links may still use #
+  const incoming = fromQuery || fromHash;
+
+  if (incoming){
+    const loaded = decodeState(incoming);
+    if (loaded){
+      state = Object.assign({ id: uid(), title:'', theme:'fresh-start', locked:false, explode:false, items:[] }, loaded);
+      isOwner = isOwnList(state.id);
+    } else {
+      isOwner = true;
+      markOwned(state.id);
+    }
+  } else {
+    isOwner = true;
+    markOwned(state.id);
+  }
+
+  const titleField = document.getElementById('titleField');
+  titleField.value = state.title;
+  if (!canEdit()) titleField.setAttribute('readonly', 'readonly');
+  titleField.addEventListener('input', (e) => { state.title = e.target.value; });
+
+  const lockToggle = document.getElementById('lockToggle');
+  lockToggle.checked = state.locked;
+  lockToggle.addEventListener('change', () => {
+    state.locked = lockToggle.checked;
+    renderList();
+    refreshOwnerUI();
+  });
+
+  const explodeToggle = document.getElementById('explodeToggle');
+  explodeToggle.checked = state.explode;
+  explodeToggle.addEventListener('change', () => {
+    state.explode = explodeToggle.checked;
+  });
+
+  document.getElementById('goneNewBtn').addEventListener('click', () => {
+    window.location.href = window.location.pathname;
+  });
+
+  applyTheme(state.theme);
+
+  if (isExploded(state.id)){
+    showGoneScreen();
+    return;
+  }
+
+  refreshOwnerUI();
+  renderList();
+  pulseCelebrate();
+
+  document.getElementById('addBtn').addEventListener('click', addItem);
+  document.getElementById('addInput').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') addItem();
+  });
+  function addItem(){
+    if (!canEdit()) return;
+    const input = document.getElementById('addInput');
+    const val = input.value.trim();
+    if (!val) return;
+    state.items.push({ text: val, done: false });
+    input.value = '';
+    renderList();
+    pulseCelebrate();
+  }
+
+  document.getElementById('shareBtn').addEventListener('click', async () => {
+    syncUrl();
+    const url = window.location.href;
+    const hint = document.getElementById('shareHint');
+    if (navigator.share){
+      try {
+        await navigator.share({ title: state.title || 'A checklist for you', url });
+        return;
+      } catch(e){ /* user cancelled or unsupported, fall through to copy */ }
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      hint.textContent = 'Link copied — paste it into a text or email.';
+      setTimeout(() => { hint.textContent = 'Opens exactly like this for whoever you send it to.'; }, 2600);
+    } catch(e){
+      hint.textContent = url;
+    }
+  });
+
+  window.addEventListener('resize', () => {
+    const theme = THEMES.find(t => t.id === state.theme) || THEMES[0];
+    renderMotif(theme);
+  });
+
+})();
+</script>
+</body>
+</html>

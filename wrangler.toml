@@ -1,0 +1,12 @@
+name = "checkmyboxes"
+main = "src/worker.js"
+compatibility_date = "2024-09-23"
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
+# Only the homepage (for per-checklist link previews) and the image
+# endpoint need to run our code first — everything else (about.html,
+# privacy.html, contact.html, styles/legal.css) is served straight from
+# the asset bundle without invoking the Worker at all.
+run_worker_first = ["/", "/api/*"]
